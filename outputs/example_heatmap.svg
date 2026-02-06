@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+  <rect width="224" height="224" fill="#111"/>
+  <circle cx="112" cy="112" r="70" fill="#444"/>
+  <circle cx="112" cy="112" r="50" fill="#ff4500" opacity="0.6"/>
+  <text x="112" y="118" font-size="14" text-anchor="middle" fill="#fff">Heatmap</text>
+</svg>
