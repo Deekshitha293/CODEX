@@ -1,0 +1,71 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #f6f9fc, #e9efff);
+    color: #1d2a3a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: min(720px, 90%);
+    background: #fff;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+h1 {
+    margin: 0;
+}
+
+.subtitle {
+    margin-top: 0.5rem;
+    color: #5b687a;
+}
+
+.song-list {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.song-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    background: #f8fbff;
+}
+
+.song-card h2 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+button {
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    background: #3b82f6;
+    color: #fff;
+    transition: background 0.2s ease;
+}
+
+button:hover {
+    background: #2563eb;
+}
