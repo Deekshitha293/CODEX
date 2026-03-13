@@ -1,0 +1,3 @@
+import { Card } from '../components/ui';
+import { useData } from '../context/DataContext';
+export default function(){const {invoices}=useData();return <main className='max-w-md mx-auto min-h-screen p-4 bg-brand-light'><h1 className='font-bold text-xl'>Billing History</h1><div className='space-y-3 mt-4'>{invoices.map(i=><Card key={i.id} className='p-4'><p className='font-semibold'>{i.id}</p><p className='text-sm'>{new Date(i.date).toLocaleDateString()}</p><p className='font-bold'>₹{i.total}</p><p className='text-sm text-slate-500'>Customer: {i.customer}</p><button className='text-brand-primary text-sm mt-2'>View Invoice</button></Card>)}</div></main>}
