@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-text-primary bg-app-bg antialiased;
+  }
+}
+
+@layer components {
+  .screen-shell {
+    @apply min-h-screen bg-app-bg px-4 pb-24 pt-6 md:mx-auto md:max-w-md md:rounded-[28px] md:my-8 md:border md:border-slate-200 md:bg-white md:shadow-soft;
+  }
+
+  .card-surface {
+    @apply rounded-card bg-card shadow-soft;
+  }
+}
