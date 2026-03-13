@@ -1,0 +1,8 @@
+import { Search } from 'lucide-react';
+import { Card } from '../components/ui';
+import { useData } from '../context/DataContext';
+import { expiringInDays } from '../utils/analytics';
+import { useState } from 'react';
+
+export default function(){const {products}=useData();const [tab,setTab]=useState('All Items');const list=tab==='Critical (<7 days)'?expiringInDays(products,7):tab==='Monthly'?expiringInDays(products,30):expiringInDays(products,30);
+return <main className='max-w-md mx-auto min-h-screen p-4 bg-brand-light'><header className='flex justify-between'><h1 className='font-bold text-xl'>Expiry Alerts</h1><Search size={18}/></header><div className='flex gap-3 mt-4 text-sm'>{['All Items','Critical (<7 days)','Monthly'].map(t=><button key={t} onClick={()=>setTab(t)} className={`${tab===t?'text-brand-primary border-b-2 border-brand-primary':''}`}>{t}</button>)}</div><div className='space-y-3 mt-4'>{list.map((p,i)=>{const d=Math.ceil((new Date(p.expiry_date).getTime()-Date.now())/86400000);const critical=d<=2;return <Card key={p.id} className='p-3'><p className={`text-xs inline-block px-2 py-1 rounded-full ${critical?'bg-red-100 text-red-500':'bg-orange-100 text-orange-500'}`}>{critical?'CRITICAL':'WARNING'}</p><p className='font-semibold mt-1'>{p.name}</p><p className='text-sm'>Stock: {p.stock}</p><p className='text-sm'>Expires: {new Date(p.expiry_date).toLocaleDateString()}</p><p className='text-xs text-slate-500'>{d} days remaining</p><button className='text-brand-primary text-sm mt-1'>{i===0?'Apply 20% Off':i===1?'Sell Fast':'View Details'}</button></Card>})}</div></main>}
