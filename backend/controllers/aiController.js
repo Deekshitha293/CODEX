@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const { askGPT } = require('../agents/assistantAgent');
 const {
   todaySales,
   topProduct,
@@ -6,7 +7,8 @@ const {
   inventorySummary,
   reorderRecommendations,
   weeklySales,
-  expiryDiscounts
+  expiryDiscounts,
+  forecast
 } = require('./analyticsController');
 
 const mockRes = () => {
@@ -24,63 +26,76 @@ const queryAssistant = async (req, res) => {
   const { query = '' } = req.body;
   const q = query.toLowerCase();
 
-  if (q.includes('top') || q.includes('most sold') || q.includes('sold the most this week')) {
-    const wrapper = mockRes();
-    await topProduct(req, wrapper);
-    const top = wrapper.payload.value;
+  const wrappers = {
+    inventory: mockRes(),
+    top: mockRes(),
+    reorder: mockRes(),
+    expiry: mockRes(),
+    forecast: mockRes()
+  };
+
+  await Promise.all([
+    inventorySummary(req, wrappers.inventory),
+    topProduct(req, wrappers.top),
+    reorderRecommendations(req, wrappers.reorder),
+    expiryDiscounts(req, wrappers.expiry),
+    forecast(req, wrappers.forecast)
+  ]);
+
+  const gptReply = await askGPT({
+    query,
+    context: {
+      inventorySummary: wrappers.inventory.payload.value,
+      topProduct: wrappers.top.payload.value,
+      reorder: wrappers.reorder.payload.value,
+      expiry: wrappers.expiry.payload.value,
+      forecast: wrappers.forecast.payload.value
+    }
+  });
+
+  if (gptReply) return res.json({ reply: gptReply, source: 'gpt' });
+
+  if (q.includes('top') || q.includes('most sold')) {
+    const top = wrappers.top.payload.value;
     const product = await Product.findOne({ name: top?.name });
     return res.json({
-      reply: `${top.name} is your top product this week with ${top.quantity} units sold. Stock remaining is ${product?.stock ?? 'N/A'} units.`
+      reply: `${top.name} is top-selling with ${top.quantity} units. Remaining stock: ${product?.stock ?? 'N/A'} units.`,
+      source: 'rules'
     });
   }
 
   if (q.includes('run out') || q.includes('reorder')) {
-    const wrapper = mockRes();
-    await reorderRecommendations(req, wrapper);
-    const first = wrapper.payload.value?.[0];
-    if (!first) return res.json({ reply: 'No immediate reorder recommendations.' });
-    return res.json({ reply: `${first.name} may run out in ${first.daysUntilEmpty} days. Recommended reorder: ${first.recommendedReorder} units.` });
+    const first = wrappers.reorder.payload.value?.[0];
+    if (!first) return res.json({ reply: 'No immediate reorder recommendations.', source: 'rules' });
+    return res.json({ reply: `${first.name} may run out in ${first.daysUntilEmpty} days. Reorder ${first.recommendedReorder} units.`, source: 'rules' });
   }
 
   if (q.includes('weekly revenue') || q.includes('weekly sales')) {
     const wrapper = mockRes();
     await weeklySales(req, wrapper);
     const total = wrapper.payload.value.reduce((s, d) => s + d.sales, 0);
-    return res.json({ reply: `Your weekly revenue is ₹${total}.` });
+    return res.json({ reply: `Your weekly revenue is ₹${total}.`, source: 'rules' });
   }
 
   if (q.includes('expiring')) {
-    const wrapper = mockRes();
-    await expiryDiscounts(req, wrapper);
-    const first = wrapper.payload.value?.[0];
-    if (!first) return res.json({ reply: 'No items are expiring soon.' });
-    return res.json({ reply: `${first.name} is expiring in ${first.daysLeft} days. Suggested discount is ${first.discountPercentage}%.` });
-  }
-
-  if (q.includes('low stock')) {
-    const items = await Product.find({ stock: { $lt: 20 } }).select('name stock');
-    return res.json({ reply: `Low stock items: ${items.map((i) => `${i.name} (${i.stock})`).join(', ') || 'None'}` });
+    const first = wrappers.expiry.payload.value?.[0];
+    if (!first) return res.json({ reply: 'No items are expiring soon.', source: 'rules' });
+    return res.json({ reply: `${first.name} expires in ${first.daysLeft} days. Suggested discount ${first.discountPercentage}%.`, source: 'rules' });
   }
 
   if (q.includes('today') && q.includes('sales')) {
     const wrapper = mockRes();
     await todaySales(req, wrapper);
-    return res.json({ reply: `Today's revenue is ₹${wrapper.payload.value.totalRevenue}. Total invoices: ${wrapper.payload.value.totalInvoices}.` });
-  }
-
-  if (q.includes('inventory')) {
-    const wrapper = mockRes();
-    await inventorySummary(req, wrapper);
-    return res.json({ reply: `Inventory has ${wrapper.payload.value.totalProducts} products and ${wrapper.payload.value.lowStockItems} low stock items.` });
+    return res.json({ reply: `Today's revenue is ₹${wrapper.payload.value.totalRevenue}. Invoices: ${wrapper.payload.value.totalInvoices}.`, source: 'rules' });
   }
 
   if (q.includes('demand')) {
     const wrapper = mockRes();
     await demand(req, wrapper);
-    return res.json({ reply: `Predicted demand next week is ₹${wrapper.payload.value.predictionNextWeek.toFixed(2)} based on average daily sales ₹${wrapper.payload.value.avgDailySales.toFixed(2)}.` });
+    return res.json({ reply: `Predicted next-week demand is ₹${wrapper.payload.value.predictionNextWeek.toFixed(2)}.`, source: 'rules' });
   }
 
-  return res.json({ reply: 'Ask me about top product, reorder advice, weekly revenue, expiring items, low stock, or demand prediction.' });
+  return res.json({ reply: 'Ask about top product, reorder, weekly sales, expiring items, demand prediction, or business score.', source: 'rules' });
 };
 
 module.exports = { queryAssistant };

@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const { monitorInventory } = require('../agents/inventoryAgent');
+const { monitorExpiry } = require('../agents/expiryAgent');
 
 const getProducts = async (req, res) => {
   const { page = 1, limit = 10, category, search, barcode } = req.query;
@@ -18,7 +20,8 @@ const getProducts = async (req, res) => {
 
 const createProduct = async (req, res) => {
   const product = await Product.create(req.body);
-  if (product.stock < 20) req.app.locals.io?.emit('notification', { type: 'low_stock', message: `⚠️ ${product.name} stock low: ${product.stock} units remaining` });
+  await monitorInventory({ io: req.app.locals.io, products: [product] });
+  monitorExpiry({ io: req.app.locals.io, products: [product] });
   res.status(201).json(product);
 };
 
@@ -28,9 +31,8 @@ const updateProduct = async (req, res) => {
 
   Object.assign(product, req.body);
   await product.save();
-  if (product.stock < 20) req.app.locals.io?.emit('notification', { type: 'low_stock', message: `⚠️ ${product.name} stock low: ${product.stock} units remaining` });
-  const daysRemaining = Math.ceil((new Date(product.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (daysRemaining <= 7) req.app.locals.io?.emit('notification', { type: 'expiry_alert', message: `⚠️ ${product.name} expiring in ${daysRemaining} days` });
+  await monitorInventory({ io: req.app.locals.io, products: [product] });
+  monitorExpiry({ io: req.app.locals.io, products: [product] });
   res.json(product);
 };
 
@@ -41,16 +43,13 @@ const deleteProduct = async (req, res) => {
 
 const expiryAlerts = async (_req, res) => {
   const products = await Product.find();
-  const now = Date.now();
-  const alerts = products
-    .map((p) => {
-      const daysRemaining = Math.ceil((new Date(p.expiryDate).getTime() - now) / (1000 * 60 * 60 * 24));
-      const severity = daysRemaining < 7 ? 'CRITICAL' : daysRemaining < 30 ? 'WARNING' : 'NORMAL';
-      return { ...p.toObject(), daysRemaining, severity };
-    })
-    .filter((p) => p.severity !== 'NORMAL');
-
-  res.json(alerts);
+  const alerts = monitorExpiry({ io: null, products }).filter((p) => p.daysLeft <= 30);
+  res.json(
+    alerts.map((p) => ({
+      ...p,
+      severity: p.daysLeft < 7 ? 'CRITICAL' : 'WARNING'
+    }))
+  );
 };
 
 module.exports = { getProducts, createProduct, updateProduct, deleteProduct, expiryAlerts };

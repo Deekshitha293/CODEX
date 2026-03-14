@@ -36,6 +36,7 @@ export default function Billing() {
       if (!product) return;
       addBillItem({
         productId: Number(String(product._id).slice(-6)),
+        mongoId: String(product._id),
         title: product.name,
         subtitle: product.category,
         price: product.price,
